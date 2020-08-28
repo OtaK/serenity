@@ -89,6 +89,7 @@ pub struct ClientBuilder<'a> {
     framework: Option<Arc<Box<dyn Framework + Send + Sync + 'static>>>,
     event_handler: Option<Arc<dyn EventHandler>>,
     raw_event_handler: Option<Arc<dyn RawEventHandler>>,
+    is_user_token: bool,
 }
 
 #[cfg(feature = "gateway")]
@@ -116,7 +117,37 @@ impl<'a> ClientBuilder<'a> {
             framework: None,
             event_handler: None,
             raw_event_handler: None,
+            is_user_token: false,
         }.token(token)
+    }
+
+    /// Construct a new builder to call methods on for the client construction.
+    /// The `token` will NOT automatically be prefixed "Bot ". Please refer to
+    /// the documentation of [`user_token`] for more information.
+    ///
+    /// **Panic**:
+    /// If you enabled the `framework`-feature (on by default), you must specify
+    /// a framework via the [`framework`] or [`framework_arc`] method,
+    /// otherwise awaiting the builder will cause a panic.
+    ///
+    /// [`user_token`]: #method.user_token
+    /// [`framework`]: #method.framework
+    /// [`framework_arc`]: #method.framework_arc
+    pub unsafe fn new_for_user(token: impl AsRef<str>) -> Self {
+        Self {
+            data: Some(TypeMap::new()),
+            http: None,
+            fut: None,
+            guild_subscriptions: true,
+            intents: None,
+            #[cfg(feature = "cache")]
+            timeout: None,
+            #[cfg(feature = "framework")]
+            framework: None,
+            event_handler: None,
+            raw_event_handler: None,
+            is_user_token: false,
+        }.user_token(token)
     }
 
     /// Sets a token for the bot. If the token is not prefixed "Bot ",
@@ -132,6 +163,16 @@ impl<'a> ClientBuilder<'a> {
 
         self.http = Some(Http::new_with_token(&token));
 
+        self
+    }
+
+    /// Sets a user token. This will not preprend the "Bot " string,
+    /// and as such, this method is marked unsafe because of the various
+    /// implications related to Discord ToS as this library could then be
+    /// used as a self-botting gateway.
+    pub unsafe fn user_token(mut self, token: impl AsRef<str>) -> Self {
+        self.http = Some(Http::new_with_token(token.as_ref().trim()));
+        self.is_user_token = true;
         self
     }
 
@@ -585,6 +626,16 @@ impl Client {
     /// [`Future`]: https://doc.rust-lang.org/std/future/trait.Future.html
     pub fn new<'a>(token: impl AsRef<str>) -> ClientBuilder<'a> {
         ClientBuilder::new(token)
+    }
+
+    /// Returns a builder implementing [`Future`]. You can chain the builder methods and then await
+    /// in order to finish the [`Client`].
+    /// This method will use a user token and NOT a bot token, hence the `unsafe` marking.
+    ///
+    /// [`Client`]: #struct.Client.html
+    /// [`Future`]: https://doc.rust-lang.org/std/future/trait.Future.html
+    pub unsafe fn new_user<'a>(token: impl AsRef<str>) -> ClientBuilder<'a> {
+        ClientBuilder::new_for_user(token)
     }
 
     /// Establish the connection and start listening for events.

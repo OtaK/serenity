@@ -8,7 +8,7 @@ license = "ISC"
 name = "serenity"
 readme = "README.md"
 repository = "https://github.com/serenity-rs/serenity.git"
-version = "0.9.0-rc.0"
+version = "0.9.0-rc.1"
 edition = "2018"
 
 [dependencies]
@@ -72,7 +72,7 @@ version = "0.8"
 
 [dependencies.typemap_rev]
 optional = true
-version = "0.1.2"
+version = "0.1"
 
 [dependencies.url]
 optional = true
